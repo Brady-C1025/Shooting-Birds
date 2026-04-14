@@ -3,13 +3,31 @@
     <head>
         <title>Shooting Birds</title>
         <meta charset="utf-8"> 
+        <style>
+            .gamecanvas{
+                 border:1px solid black;
+                 padding: 0; 
+                 margin: auto; 
+                 display: block;
+            }
+            .centeredtext{
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            body{
+                background-color: lightskyblue;
+            }
+        </style>
     </head>
     <body>
-        <h1>Shooting Birds</h1>
+        <h1 class="centeredtext" >Shooting Birds</h1>
+        <h2 class="centeredtext" >Designed By Brady Crago</h2>
 
-
+        <canvas class="gamecanvas" id="GameCanvas" width="800" height="400""></canvas>
+        
         <script>
-
+            canvas = document.getElementById("GameCanvas")
         </script>
     </body>
 </html>
