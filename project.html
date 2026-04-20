@@ -9,6 +9,7 @@
                  padding: 0; 
                  margin: auto; 
                  display: block;
+                 cursor: none;
             }
             .centeredtext{
                 display: flex;
@@ -29,6 +30,11 @@
         <canvas class="gamecanvas" id="GameCanvas" width="640" height="480"></canvas>
         
         <img id="blackduck_spritesheet" src="img/blackduck.png" style="display: none;">
+        <img id="mainmenu_spritesheet" src="img/MainMenu.png" style="display: none;">
+        <img id="cursor_spritesheet" src="img/cursor.png" style="display: none;">
+        <img id="LevelBackground_spritesheet" src="img/LevelBackground.png" style="display: none;">
+        <img id="LevelForeground_spritesheet" src="img/LevelForeground.png" style="display: none;">
+        <img id="bullet_spritesheet" src="img/bullet.png" style="display: none;">
 
 
         <script>
@@ -36,50 +42,79 @@
             var canvas = document.getElementById("GameCanvas");
             var ctx = canvas.getContext("2d");
             ctx.imageSmoothingEnabled = false;
+            
+            let gamestate = 0;
 
-            const duck_scale = 80;
-            const duck_change_direction_interval = 100;
+            const duck_scale = 64;
+            const duck_change_direction_interval = 200;
+            const duck_animation_speed = 15;
             const blackduck_spritesheet = document.getElementById("blackduck_spritesheet");
-            let ducks = [
-                { x : 0, y : 200, //x/y pos. of duck
-                v : 1, //velocity/speed
-                s : 0, f : 0, ft : 0, //s is state, f is frame, ft is frametick
-                d : [0,120]}, //d is direction and time since last change
-                
-                { x : 200, y : 200, //x/y pos. of duck
-                v : 1, //velocity/speed
-                s : 0, f : 0, ft : 0, //s is state, f is frame, ft is frametick
-                d : [0,120]}, //d is direction and time since last change
-            ]
+            let ducks = []
 
-            if (blackduck_spritesheet.complete) {
+            const mainmenu_spritesheet = document.getElementById("mainmenu_spritesheet");
+
+            const levelbackground_spritesheet = document.getElementById("LevelBackground_spritesheet");
+            const levelforeground_spritesheet = document.getElementById("LevelForeground_spritesheet");
+            const bullet_spritesheet = document.getElementById("bullet_spritesheet");
+
+            const cursor_scale = 64;
+            const cursor_spritesheet = document.getElementById("cursor_spritesheet");
+            let mouseX = 0;
+            let mouseY = 0;
+            let clickX = 0;
+            let clickY = 0;
+            let maxshots = 3;
+            let shots = 0;
+            canvas.addEventListener("mousemove", function (e) {
+                const rect = canvas.getBoundingClientRect();
+                mouseX = e.clientX - rect.left;
+                mouseY = e.clientY - rect.top;
+            });
+            canvas.addEventListener("click", function (e) {
+                const rect = canvas.getBoundingClientRect();
+                clickX = e.clientX - rect.left;
+                clickY = e.clientY - rect.top;
+                Click(clickX, clickY);
+            });
+
+
+            if (mainmenu_spritesheet.complete) {
                 update();
             } else {
-                blackduck_spritesheet.onload = update;
+                mainmenu_spritesheet.onload = update;
             }
 
             function UpdateDucks(){
                 for (let duck of ducks){
 
-                    duck.d = GetDuckDirection(duck.d); //update duck location
-                    
-                    if(duck.x <= 10){ //turn around if at edge of canvas
-                        duck.d[0] = 0;
-                    }else if(duck.x + 80 >= canvas.width){
-                        duck.d[0]= Math.PI;
+                    if(duck.s != 2){// check if dead
+                        
+                        if(duck.x <= 0){ //turn around if at edge of canvas
+                            duck.d[0] = 0;
+                        }else if(duck.x + duck_scale >= canvas.width){
+                            duck.d[0]= Math.PI;
+                        }else if(duck.y + duck_scale >= canvas.height-100){
+                            duck.d[0]= 3 * Math.PI / 2;
+                        }
+
+                        duck.d = GetDuckDirection(duck.d); //update duck location
+                        duck.x += Math.cos(duck.d[0]) * duck.v;
+                        duck.y += Math.sin(duck.d[0]) * duck.v;
+                    }else if(duck.f != 0){
+                        duck.y += 1;
                     }
-                    
-                    
-                    duck.x += Math.cos(duck.d[0]) * duck.v;
-                    duck.y += Math.sin(duck.d[0]) * duck.v;
 
-                    duck.s = GetDuckState(duck.d) //update duck state
+                    duck.s = GetDuckState(duck.s,duck.d) //update duck state
 
-                    if(duck.ft >= 15){ //update duck animation
-                        duck.ft = 0;
-                        duck.f = GetDuckFrame(duck.s, duck.f);
-                    }else{
+                    if (duck.s == 2 && duck.ft < duck_animation_speed+50){
                         duck.ft += 1;
+                    }else{
+                        if(duck.ft >= duck_animation_speed){ //update duck animation
+                            duck.ft = 0;
+                            duck.f = GetDuckFrame(duck.s, duck.f);
+                        }else{
+                            duck.ft += 1;
+                        }
                     }
 
                     var flipx = false
@@ -88,7 +123,6 @@
                     }else{
                         flipx = false;
                     }
-
 
                     DrawDuck( // draw the duck
                         blackduck_spritesheet,
@@ -101,8 +135,10 @@
                 }
             }
 
-            function GetDuckState(direction){ //sets the state of the duck, state used for sprite determination
-                if(Math.abs(Math.cos(direction[0])) > Math.abs(Math.sin(direction[0]))){ //checks if its mainly moving horizontal
+            function GetDuckState(state,direction){ //sets the state of the duck, state used for sprite determination
+                if(state == 2){
+                    return 2;
+                }else if(Math.abs(Math.cos(direction[0])) > Math.abs(Math.sin(direction[0]))){ //checks if its mainly moving horizontal
                     return 1;
                 }else{
                     return 0;
@@ -156,12 +192,77 @@
                 }
             }
 
+            function MainMenu(){
+                ctx.drawImage(mainmenu_spritesheet,0,0,256,224,0,0,canvas.width, canvas.height)
+            }
+
+            function DrawCursor(){
+                ctx.drawImage(cursor_spritesheet,0,0,32,32,mouseX-(cursor_scale/2),mouseY-(cursor_scale/2),cursor_scale,cursor_scale)
+            }
+
+            function DrawBackground(){
+                ctx.drawImage(levelbackground_spritesheet,0,0,256,240,0,0,canvas.width, canvas.height)
+            }
+
+            function DrawForeGround(){
+                ctx.drawImage(levelforeground_spritesheet,0,0,256,240,0,0,canvas.width, canvas.height)
+            }
+
+            function Click(x,y){
+                if(gamestate == 0){
+                    gamestate = 1;
+                    GenerateDucks(2,1);
+                }else if(gamestate == 1 && shots < maxshots){
+                    shots += 1;
+                    for (let duck of ducks){
+                        if((x > duck.x && x < (duck.x + duck_scale)) && (y > duck.y && y < (duck.y + duck_scale)) && duck.s != 2){
+                            duck.s = 2;
+                            duck.f = 0;
+                        }
+                    }
+                }
+            }
+            
+            function GenerateDucks(n,v){
+                for (let i = 0; i < n; i++) {
+                    ducks.push({x : Math.floor(Math.random() * 640) + 1, y : 380, //x/y pos. of duck
+                                v : v, //velocity/speed
+                                s : 0, f : 0, ft : 0, //s is state, f is frame, ft is frametick
+                                d : [3 * Math.PI / 2,120] //d is direction and time since last change)
+                                });
+                }
+            }
+
+            function UpdateShots(x){
+                if(x == 0){
+                   ctx.drawImage(bullet_spritesheet,0,0,4,7,65,415,8,14)
+                   ctx.drawImage(bullet_spritesheet,0,0,4,7,85,415,8,14) 
+                   ctx.drawImage(bullet_spritesheet,0,0,4,7,105,415,8,14) 
+                }else if(x == 1){
+                   ctx.drawImage(bullet_spritesheet,0,0,4,7,65,415,8,14)
+                   ctx.drawImage(bullet_spritesheet,0,0,4,7,85,415,8,14)
+                }else if(x == 2){
+                    ctx.drawImage(bullet_spritesheet,0,0,4,7,65,415,8,14)
+                }
+            }
+
             function update(){
 
                 ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-                UpdateDucks();                
-
+                switch (gamestate) {
+                    case 0:
+                        MainMenu();
+                        break;
+                    case 1:
+                        DrawBackground();
+                        UpdateDucks();
+                        DrawForeGround();
+                        UpdateShots(shots);
+                        break;
+                    case 2:
+                        break;
+                }       
+                DrawCursor()
                 requestAnimationFrame(update);
             }
 
