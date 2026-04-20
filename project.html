@@ -5,7 +5,7 @@
         <meta charset="utf-8"> 
         <style>
             .gamecanvas{
-                 border:1px solid black;
+                 border:1px solid white;
                  padding: 0; 
                  margin: auto; 
                  display: block;
@@ -14,20 +14,158 @@
                 display: flex;
                 align-items: center;
                 justify-content: center;
+                color: white;
             }
             body{
-                background-color: lightskyblue;
+                background-color: black;
             }
         </style>
     </head>
     <body>
+        
         <h1 class="centeredtext" >Shooting Birds</h1>
         <h2 class="centeredtext" >Designed By Brady Crago</h2>
 
-        <canvas class="gamecanvas" id="GameCanvas" width="800" height="400""></canvas>
+        <canvas class="gamecanvas" id="GameCanvas" width="640" height="480"></canvas>
         
+        <img id="blackduck_spritesheet" src="img/blackduck.png" style="display: none;">
+
+
         <script>
-            canvas = document.getElementById("GameCanvas")
+
+            var canvas = document.getElementById("GameCanvas");
+            var ctx = canvas.getContext("2d");
+            ctx.imageSmoothingEnabled = false;
+
+            const duck_scale = 80;
+            const duck_change_direction_interval = 100;
+            const blackduck_spritesheet = document.getElementById("blackduck_spritesheet");
+            let ducks = [
+                { x : 0, y : 200, //x/y pos. of duck
+                v : 1, //velocity/speed
+                s : 0, f : 0, ft : 0, //s is state, f is frame, ft is frametick
+                d : [0,120]}, //d is direction and time since last change
+                
+                { x : 200, y : 200, //x/y pos. of duck
+                v : 1, //velocity/speed
+                s : 0, f : 0, ft : 0, //s is state, f is frame, ft is frametick
+                d : [0,120]}, //d is direction and time since last change
+            ]
+
+            if (blackduck_spritesheet.complete) {
+                update();
+            } else {
+                blackduck_spritesheet.onload = update;
+            }
+
+            function UpdateDucks(){
+                for (let duck of ducks){
+
+                    duck.d = GetDuckDirection(duck.d); //update duck location
+                    
+                    if(duck.x <= 10){ //turn around if at edge of canvas
+                        duck.d[0] = 0;
+                    }else if(duck.x + 80 >= canvas.width){
+                        duck.d[0]= Math.PI;
+                    }
+                    
+                    
+                    duck.x += Math.cos(duck.d[0]) * duck.v;
+                    duck.y += Math.sin(duck.d[0]) * duck.v;
+
+                    duck.s = GetDuckState(duck.d) //update duck state
+
+                    if(duck.ft >= 15){ //update duck animation
+                        duck.ft = 0;
+                        duck.f = GetDuckFrame(duck.s, duck.f);
+                    }else{
+                        duck.ft += 1;
+                    }
+
+                    var flipx = false
+                    if(Math.cos(duck.d[0]) < 0){ //flips the duck depending on direction moving
+                        flipx = true;
+                    }else{
+                        flipx = false;
+                    }
+
+
+                    DrawDuck( // draw the duck
+                        blackduck_spritesheet,
+                        ((duck.f*40)+(duck.s*120)),0,
+                        40,40,
+                        duck.x, duck.y,
+                        duck_scale,duck_scale,
+                        flipx
+                    );
+                }
+            }
+
+            function GetDuckState(direction){ //sets the state of the duck, state used for sprite determination
+                if(Math.abs(Math.cos(direction[0])) > Math.abs(Math.sin(direction[0]))){ //checks if its mainly moving horizontal
+                    return 1;
+                }else{
+                    return 0;
+                }
+            }
+
+            function GetDuckDirection(direction){ //sets a random direction
+                if(direction[1] > duck_change_direction_interval){
+                    angle = Math.random() * Math.PI * 2;
+                    return [angle, 0]
+                }else{
+                    return [direction[0],direction[1]+=1]
+                }
+            }
+
+            function DrawDuck(img, sx, sy, sw, sh, dx, dy, dw, dh, flipX){ //original drawImage function but with the option to flip horizontally
+            
+                ctx.save();
+            
+                if(flipX){
+                    ctx.translate(dx + dw, dy);
+                    ctx.scale(-1,1);
+                    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, dw, dh);
+                } else {
+                    ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+                }
+            
+                ctx.restore();
+
+            }
+
+            function GetDuckFrame(state, frame){ //returns the sprite frame for the duck
+                if(state == 0){
+                    if(frame == 2){
+                        return 0;
+                    }else{
+                        return frame + 1;
+                    }
+                }else if(state == 1){
+                    if(frame == 2){
+                        return 0;
+                    }else{
+                        return frame + 1;
+                    }
+                }else if(state == 2){
+                    if(frame == 2){
+                        return 1;
+                    }else{
+                        return frame + 1;
+                    }
+                }
+            }
+
+            function update(){
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+                UpdateDucks();                
+
+                requestAnimationFrame(update);
+            }
+
+
         </script>
     </body>
 </html>
