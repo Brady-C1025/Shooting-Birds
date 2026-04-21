@@ -35,6 +35,8 @@
         <img id="LevelBackground_spritesheet" src="img/LevelBackground.png" style="display: none;">
         <img id="LevelForeground_spritesheet" src="img/LevelForeground.png" style="display: none;">
         <img id="bullet_spritesheet" src="img/bullet.png" style="display: none;">
+        <img id="dogwin_spritesheet" src="img/dogwin.png" style="display: none;">
+        <img id="flyaway_spritesheet" src="img/FlyAway.png" style="display: none;">
 
 
         <script>
@@ -44,6 +46,9 @@
             ctx.imageSmoothingEnabled = false;
             
             let gamestate = 0;
+            let round_num = 0;
+            let round_ended = false;
+            let won_round = false;
 
             const duck_scale = 64;
             const duck_change_direction_interval = 200;
@@ -55,7 +60,12 @@
 
             const levelbackground_spritesheet = document.getElementById("LevelBackground_spritesheet");
             const levelforeground_spritesheet = document.getElementById("LevelForeground_spritesheet");
+            
             const bullet_spritesheet = document.getElementById("bullet_spritesheet");
+            const flyaway_spritesheet = document.getElementById("flyaway_spritesheet");
+            
+            const dogwin_spritesheet = document.getElementById("dogwin_spritesheet");
+            let dog = {x : 280, y : 300, d : 1, v : 1, ymin : 200, ymax : 300,pt : 0 , ft : 0 , f : 0, fr : 30}
 
             const cursor_scale = 64;
             const cursor_spritesheet = document.getElementById("cursor_spritesheet");
@@ -87,20 +97,29 @@
             function UpdateDucks(){
                 for (let duck of ducks){
 
-                    if(duck.s != 2){// check if dead
+                    if(duck.s != 2){// check if not dead
                         
-                        if(duck.x <= 0){ //turn around if at edge of canvas
-                            duck.d[0] = 0;
-                        }else if(duck.x + duck_scale >= canvas.width){
-                            duck.d[0]= Math.PI;
-                        }else if(duck.y + duck_scale >= canvas.height-100){
-                            duck.d[0]= 3 * Math.PI / 2;
-                        }
+                        if(round_ended == false){
+                            if(duck.x <= 0){ //turn around if at edge of canvas
+                                duck.d[0] = 0;
+                            }else if(duck.x + duck_scale >= canvas.width){
+                                duck.d[0]= Math.PI;
+                            }else if(duck.y + duck_scale >= canvas.height-100){
+                                duck.d[0]= 3 * Math.PI / 2;
+                            }
 
-                        duck.d = GetDuckDirection(duck.d); //update duck location
-                        duck.x += Math.cos(duck.d[0]) * duck.v;
-                        duck.y += Math.sin(duck.d[0]) * duck.v;
-                    }else if(duck.f != 0){
+                            duck.d = GetDuckDirection(duck.d); //update duck location
+                            duck.x += Math.cos(duck.d[0]) * duck.v;
+                            duck.y += Math.sin(duck.d[0]) * duck.v;
+                        }else{
+                            if(duck.s != 2){
+                                duck.y -= 2;
+                                duck.s = 3;
+                            }
+                            
+                        }
+                    }
+                    if(duck.s == 2 && duck.f != 0){ //when dead fall down
                         duck.y += 1;
                     }
 
@@ -138,6 +157,8 @@
             function GetDuckState(state,direction){ //sets the state of the duck, state used for sprite determination
                 if(state == 2){
                     return 2;
+                }else if(state == 3){
+                    return 3;
                 }else if(Math.abs(Math.cos(direction[0])) > Math.abs(Math.sin(direction[0]))){ //checks if its mainly moving horizontal
                     return 1;
                 }else{
@@ -189,6 +210,12 @@
                     }else{
                         return frame + 1;
                     }
+                }else if(state == 3){
+                    if(frame == 2){
+                        return 0;
+                    }else{
+                        return frame + 1;
+                    }
                 }
             }
 
@@ -208,11 +235,61 @@
                 ctx.drawImage(levelforeground_spritesheet,0,0,256,240,0,0,canvas.width, canvas.height)
             }
 
+            function DrawDog(num_of_ducks){
+                
+                if(dog.d == 1){// dog up
+                    dog.y -= dog.v;
+                    if(dog.y < dog.ymin){
+                        dog.d = 0;
+                    }
+                }
+                if(dog.d == 2){// dog down
+                    if(dog.y < dog.ymax){
+                        dog.y += dog.v;
+                        dog.d = 0;
+                    }
+                }
+                if(dog.d == 0){// dog pause
+                    dog.pt += 1
+                    if(dog.pt > 100){
+                        dog.d = 2;
+                    }
+                }
+                if(dog.ft >= dog.fr){
+                    dog.ft = 0;
+                    if(dog.f == 1){
+                        dog.f = 0;
+                    }else{
+                        dog.f = 1;
+                    }
+                }else{
+                    dog.ft += 1;
+                }
+
+                if(won_round == true){
+                    ctx.drawImage(dogwin_spritesheet,(num_of_ducks-1)*60,0,60,60,dog.x,dog.y,120,120)
+                }else{
+                    ctx.drawImage(dogwin_spritesheet,180+(60*dog.f),0,60,60,dog.x,dog.y,120,120)
+                    ctx.drawImage(flyaway_spritesheet,0,0,192,64,224,100,192,40)
+                }
+            }
+
+            function ResetRound(){
+                round_ended = false;
+                ducks = [];
+                GenerateDucks(2,1)
+                shots = 0;
+                dog.pt = 0
+                dog.y = 300
+                dog.d = 1
+                round_num += 1
+                gamestate = 1;
+            }
+
             function Click(x,y){
                 if(gamestate == 0){
-                    gamestate = 1;
-                    GenerateDucks(2,1);
-                }else if(gamestate == 1 && shots < maxshots){
+                    ResetRound()
+                }else if(gamestate == 1 && shots < maxshots && round_ended == false){
                     shots += 1;
                     for (let duck of ducks){
                         if((x > duck.x && x < (duck.x + duck_scale)) && (y > duck.y && y < (duck.y + duck_scale)) && duck.s != 2){
@@ -246,6 +323,49 @@
                 }
             }
 
+            function CheckIfWon(){
+
+                aliveducks = 0;
+                goneducks = 0;
+                if(round_ended == false){
+                    for (let duck of ducks){
+                        if(duck.s != 2 && duck.y > -80){
+                            aliveducks += 1;
+                        }
+                        if(duck.y < -80){
+                            goneducks += 1;
+                        }
+                    }
+
+                    if(aliveducks == 0 && goneducks == 0){
+                        EndRound()
+                        round_ended = true;
+                        won_round = true;
+                    }
+
+                    if(aliveducks == 0 && goneducks > 0){
+                        EndRound()
+                        round_ended = true;
+                        won_round = false;
+                    }
+
+                    if(shots == maxshots && (aliveducks > 0 || goneducks > 0)){
+                        EndRound()
+                        round_ended = true;
+                        won_round = false;
+                    }
+                }
+            }
+
+            function EndRound(){
+                setTimeout(() => {
+                    gamestate = 2;
+                    setTimeout(() => {
+                        ResetRound();
+                    }, 2000);
+                }, 3000);
+            }
+            
             function update(){
 
                 ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -258,14 +378,18 @@
                         UpdateDucks();
                         DrawForeGround();
                         UpdateShots(shots);
+                        CheckIfWon();
                         break;
                     case 2:
+                        DrawBackground();
+                        DrawDog(1);
+                        DrawForeGround();
+                        UpdateShots(shots);
                         break;
                 }       
                 DrawCursor()
                 requestAnimationFrame(update);
             }
-
 
         </script>
     </body>
