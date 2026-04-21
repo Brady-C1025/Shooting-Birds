@@ -45,14 +45,21 @@
             var ctx = canvas.getContext("2d");
             ctx.imageSmoothingEnabled = false;
             
+            let lasttime = 0; //Used to calculate delta time between frames
+            let dt = 0; //delta time
+
             let gamestate = 0;
             let round_num = 0;
             let round_ended = false;
             let won_round = false;
 
+            let duckv = 150;
+            const duck_fall_speed = 200;
+            const duck_fly_away_speed = 280;  
+            const duck_spawn_y = 300;       
             const duck_scale = 64;
-            const duck_change_direction_interval = 200;
-            const duck_animation_speed = 15;
+            const duck_change_direction_interval = 1.4;
+            const duck_animation_speed = .08;
             const blackduck_spritesheet = document.getElementById("blackduck_spritesheet");
             let ducks = []
 
@@ -65,7 +72,7 @@
             const flyaway_spritesheet = document.getElementById("flyaway_spritesheet");
             
             const dogwin_spritesheet = document.getElementById("dogwin_spritesheet");
-            let dog = {x : 280, y : 300, d : 1, v : 1, ymin : 200, ymax : 300,pt : 0 , ft : 0 , f : 0, fr : 30}
+            let dog = {x : 280, y : 300, d : 1, v : 240, ymin : 200, ymax : 300,pt : 0 , ft : 0 , f : 0, fr : .2}
 
             const cursor_scale = 64;
             const cursor_spritesheet = document.getElementById("cursor_spritesheet");
@@ -109,30 +116,30 @@
                             }
 
                             duck.d = GetDuckDirection(duck.d); //update duck location
-                            duck.x += Math.cos(duck.d[0]) * duck.v;
-                            duck.y += Math.sin(duck.d[0]) * duck.v;
+                            duck.x += Math.cos(duck.d[0]) * (duck.v*dt);
+                            duck.y += Math.sin(duck.d[0]) * (duck.v*dt);
                         }else{
                             if(duck.s != 2){
-                                duck.y -= 2;
+                                duck.y -= duck_fly_away_speed*dt;
                                 duck.s = 3;
                             }
                             
                         }
                     }
                     if(duck.s == 2 && duck.f != 0){ //when dead fall down
-                        duck.y += 1;
+                        duck.y += duck_fall_speed*dt;
                     }
 
                     duck.s = GetDuckState(duck.s,duck.d) //update duck state
 
-                    if (duck.s == 2 && duck.ft < duck_animation_speed+50){
-                        duck.ft += 1;
+                    if (duck.s == 2 && duck.ft < duck_animation_speed+.3){
+                        duck.ft += dt;
                     }else{
                         if(duck.ft >= duck_animation_speed){ //update duck animation
                             duck.ft = 0;
                             duck.f = GetDuckFrame(duck.s, duck.f);
                         }else{
-                            duck.ft += 1;
+                            duck.ft += dt;
                         }
                     }
 
@@ -171,7 +178,7 @@
                     angle = Math.random() * Math.PI * 2;
                     return [angle, 0]
                 }else{
-                    return [direction[0],direction[1]+=1]
+                    return [direction[0],direction[1]+=dt]
                 }
             }
 
@@ -238,24 +245,24 @@
             function DrawDog(num_of_ducks){
                 
                 if(dog.d == 1){// dog up
-                    dog.y -= dog.v;
+                    dog.y -= dog.v*dt;
                     if(dog.y < dog.ymin){
                         dog.d = 0;
                     }
                 }
                 if(dog.d == 2){// dog down
                     if(dog.y < dog.ymax){
-                        dog.y += dog.v;
+                        dog.y += dog.v*dt;
                         dog.d = 0;
                     }
                 }
                 if(dog.d == 0){// dog pause
-                    dog.pt += 1
-                    if(dog.pt > 100){
+                    dog.pt += dt
+                    if(dog.pt > .8){
                         dog.d = 2;
                     }
                 }
-                if(dog.ft >= dog.fr){
+                if(dog.ft >= dog.fr){ //animate the dog
                     dog.ft = 0;
                     if(dog.f == 1){
                         dog.f = 0;
@@ -263,21 +270,21 @@
                         dog.f = 1;
                     }
                 }else{
-                    dog.ft += 1;
+                    dog.ft += dt;
                 }
 
-                if(won_round == true){
+                if(won_round == true){//draw the sprite depending on win or lose round.
                     ctx.drawImage(dogwin_spritesheet,(num_of_ducks-1)*60,0,60,60,dog.x,dog.y,120,120)
                 }else{
                     ctx.drawImage(dogwin_spritesheet,180+(60*dog.f),0,60,60,dog.x,dog.y,120,120)
-                    ctx.drawImage(flyaway_spritesheet,0,0,192,64,224,100,192,40)
+                    ctx.drawImage(flyaway_spritesheet,0,0,73,17,224,100,219,51)
                 }
             }
 
             function ResetRound(){
                 round_ended = false;
                 ducks = [];
-                GenerateDucks(2,1)
+                GenerateDucks(2,duckv)
                 shots = 0;
                 dog.pt = 0
                 dog.y = 300
@@ -302,10 +309,10 @@
             
             function GenerateDucks(n,v){
                 for (let i = 0; i < n; i++) {
-                    ducks.push({x : Math.floor(Math.random() * 640) + 1, y : 380, //x/y pos. of duck
+                    ducks.push({x : Math.floor(Math.random() * 640) + 1, y : duck_spawn_y, //x/y pos. of duck
                                 v : v, //velocity/speed
                                 s : 0, f : 0, ft : 0, //s is state, f is frame, ft is frametick
-                                d : [3 * Math.PI / 2,120] //d is direction and time since last change)
+                                d : [3 * Math.PI / 2,duck_change_direction_interval] //d is direction and time since last change)
                                 });
                 }
             }
@@ -363,10 +370,16 @@
                     setTimeout(() => {
                         ResetRound();
                     }, 2000);
-                }, 3000);
+                }, 2000);
             }
             
-            function update(){
+
+
+
+            function update(currentTime){
+
+                dt = (currentTime - lasttime) / 1000; 
+                lasttime = currentTime;
 
                 ctx.clearRect(0, 0, canvas.width, canvas.height)
                 switch (gamestate) {
@@ -382,7 +395,7 @@
                         break;
                     case 2:
                         DrawBackground();
-                        DrawDog(1);
+                        DrawDog(ducks.length);
                         DrawForeGround();
                         UpdateShots(shots);
                         break;
