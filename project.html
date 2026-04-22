@@ -116,7 +116,6 @@
             const duck_animation_speed = .08;
             const duck_flap_sound_speed = 0.2;
             let duck_flap_ft = 0;
-            let is_a_duck_falling = false;
             const duck_spritesheets = {0 : document.getElementById("duck0_spritesheet"),
                                        1 : document.getElementById("duck1_spritesheet"),
                                        2 : document.getElementById("duck2_spritesheet")};
@@ -201,19 +200,15 @@
                             duckfalling_audio.currentTime = 0;
                             PlaySound('duck_falling')
                         }
-                        is_a_duck_falling = true;
                         duck.y += duck_fall_speed*dt;
                     }
 
                     if(duck.y >= 300 && duck.s == 2){
                         if(duck.sounds[1] == 0){//Play hit ground sound only once
-                            is_a_duck_falling = false;
                             duck.sounds[1] = 1;
                             deadducklands_audio.pause();
                             deadducklands_audio.currentTime = 0;
                             PlaySound('dead_duck_lands')
-                        }
-                        if(is_a_duck_falling == false){
                             duckfalling_audio.pause();
                             duckfalling_audio.currentTime = 0;
                         }
