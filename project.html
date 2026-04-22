@@ -24,10 +24,15 @@
     </head>
     <body>
         
-        <h1 class="centeredtext" >Shooting Birds</h1>
+        <h1 class="centeredtext" >Duck Hunt</h1>
         <h2 class="centeredtext" >Designed By Brady Crago</h2>
 
         <canvas class="gamecanvas" id="GameCanvas" width="640" height="480"></canvas>
+
+        <p class="centeredtext" >Controls : Literally just left mouse click.</p>
+        <p class="centeredtext" >Probably still has bugs but ive fixed all the ones ive found.</p>
+        <p class="centeredtext" >Game should work on mobile but not designed for it.</p>
+        <p class="centeredtext" >:) have fun.</p>
         
         <img id="duck0_spritesheet" src="img/blackduck.png" style="display: none;">
         <img id="duck1_spritesheet" src="img/blueduck.png" style="display: none;">
@@ -99,6 +104,7 @@
             let clicks = 0;
 
             let points = 0;
+            let high_score = 0;
             let draw_points = []// type : 0, x : 0, y : 0, ft : 0
             const smallpoints_spritesheet = document.getElementById("smallpoints_spritesheet");
             const bignums_spritesheet = document.getElementById("bignums_spritesheet");
@@ -135,7 +141,7 @@
             let dog = {x : 265, y : 0, d : 1, v : 240, ymin : 200, ymax : 300,pt : 0 , ft : 0 , f : 0, fr : .1,}//Dog after Round
 
             const dogsniff_spritesheet = document.getElementById("dogsniff_spritesheet");
-            let dog_sniff = {x : 0, y : 300, ft : 0, f : 0, fr : .15, s : 0, ac : 0,  startx : 0, starty : 255}//Dog at start and between levels
+            let dog_sniff = {x : 0, y : 300, ft : 0, f : 0, fr : .15, s : 0, ac : 0,  startx : 0, starty : 255, bark_ft : .2, bark_count : 0}//Dog at start and between levels
             let dog_sniff_anim = false;
             let round_sign_time = 0;
 
@@ -168,7 +174,6 @@
             function UpdateDucks(){
                 for (let duck of ducks){
                     if(duck.s != 2){// check if not dead
-                        
                         if(round_ended == false){
                             if(duck.x <= 0 && round_clock_status != 'ended'){ //turn around if at right edge of canvas
                                 duck.d[0] = 0;
@@ -181,7 +186,7 @@
                             }
                             
                             if(duck.y >= -80 && duck.x+duck_scale > 0 && duck.x < canvas.width){
-                                duck.d = GetDuckDirection(duck.d); //update duck location
+                                duck.d = GetDuckDirection(duck.d, duck.y); //update duck location
                                 duck.x += Math.cos(duck.d[0]) * (duck.v*dt);
                                 duck.y += Math.sin(duck.d[0]) * (duck.v*dt);
                             }
@@ -193,6 +198,12 @@
                             
                         }
                     }
+                    if(duck.s != 2 && duck.y <= 260 && duck.y > 258){// make them chose a direction immediatly after leaving the grass
+                        duck.d[1] = (duck.d[2]-.08)
+                    }
+
+
+
                     if(duck.s == 2 && duck.f != 0 && duck.y < 300){ //when dead fall down
                         if(duck.sounds[0] == 0){//Play falling sound only once
                             duck.sounds[0] = 1;
@@ -270,10 +281,21 @@
                 }
             }
 
-            function GetDuckDirection(direction){ //sets a random direction
+            function GetDuckDirection(direction, y){ //sets a random direction
+                let angle = 0;
+
                 if(direction[1] > direction[2]){
-                    angle = Math.random() * Math.PI * 2;
-                    return [angle, 0, direction[2]]
+                
+                    if(round_clock_status == 'ended'){//if round ended favor going up
+                        angle = Math.PI + Math.random() * Math.PI;
+                        return [angle, 0, direction[2]];
+                    }else if(y <= 130){//up in top half of screen go in any direction
+                        angle = Math.random() * Math.PI * 2;
+                        return [angle, 0, direction[2]];
+                    }else if (y > 130){//if in bottom half cant go up
+                        angle = Math.PI + Math.random() * Math.PI;
+                        return [angle, 0, direction[2]];
+                    }
                 }else{
                     return [direction[0],direction[1]+=dt,direction[2]]
                 }
@@ -465,6 +487,17 @@
                         }
                     }
                     if(dog_sniff.s == 4){//Jump
+                        if(dog_sniff.bark_ft >= .25 && dog_sniff.bark_count < 3){
+                            dog_sniff.bark_ft = 0;
+                            dog_sniff.bark_count += 1;
+                            dogbark_audio.pause();
+                            dogbark_audio.currentTime = 0;
+                            PlaySound('dog_bark')
+                        }else{
+                            console.log(dog_sniff.bark_ft >= .05, dog_sniff.bark_ft)
+                            dog_sniff.bark_ft += dt;
+                        }
+
                         if(dog_sniff.ft >= dog_sniff.fr && dog_sniff.ft <= .4){
                             dog_sniff.x += 200*dt
                             dog_sniff.y -= 300*dt
@@ -530,6 +563,17 @@
                         }
                     }
                     if(dog_sniff.s == 2){//Jump
+                        if(dog_sniff.bark_ft >= .25 && dog_sniff.bark_count < 3){
+                            dog_sniff.bark_ft = 0;
+                            dog_sniff.bark_count += 1;
+                            dogbark_audio.pause();
+                            dogbark_audio.currentTime = 0;
+                            PlaySound('dog_bark')
+                        }else{
+                            console.log(dog_sniff.bark_ft >= .05, dog_sniff.bark_ft)
+                            dog_sniff.bark_ft += dt;
+                        }
+
                         if(dog_sniff.ft >= dog_sniff.fr && dog_sniff.ft <= .4){
                             dog_sniff.x += 200*dt
                             dog_sniff.y -= 300*dt
@@ -717,7 +761,6 @@
             }
 
             function ResetRound(){
-                console.log(round_num)
                 if(round_num < 10){
                     round_ended = false;
                     ducks = [];
@@ -726,7 +769,7 @@
                     dog.pt = 0;
                     dog.y = 300;
                     dog.d = 1;
-                    round_num += 2;
+                    round_num += diffuculty;
                     gamestate = 1;
                     draw_points = [];
                     round_clock_status = 'waiting';
@@ -757,24 +800,48 @@
                 }
 
                 if(gamestate == 0 && clicks >= 2){
-                    titlesong_audio.pause()
-                    titlesong_audio.currentTime = 0;
-                    PlaySound('intro_to_ducks')
-                    dog_sniff.x = dog_sniff.startx;
-                    dog_sniff.y = dog_sniff.starty;
-                    dog_sniff.f = 0;
-                    dog_sniff.ac = 0;
-                    dog_sniff.s = 0;
-                    dog_sniff.ft = 0;
-                    dog_sniff_anim = true;
-                    gameover = false;
-                    gamestate = 4;
-                    played_intro_song = false;
-                    setTimeout(() => {//Wait for dog sniff animation full
-                        ResetLevel();
-                        ResetRound();
-                    }, 9000);
-                    
+                    if(x >= 150 && x <= 480){
+                        if(y >= 300 && y <=320){
+                            titlesong_audio.pause()
+                            titlesong_audio.currentTime = 0;
+                            PlaySound('intro_to_ducks')
+                            dog_sniff.x = dog_sniff.startx;
+                            dog_sniff.y = dog_sniff.starty;
+                            dog_sniff.f = 0;
+                            dog_sniff.ac = 0;
+                            dog_sniff.s = 0;
+                            dog_sniff.ft = 0;
+                            dog_sniff_anim = true;
+                            gameover = false;
+                            diffuculty = 1;
+                            gamestate = 4;
+                            played_intro_song = false;
+                            setTimeout(() => {//Wait for dog sniff animation full
+                                ResetLevel();
+                                ResetRound();
+                            }, 9000);
+                        }else if(y >= 335 && y <= 355){
+                            titlesong_audio.pause()
+                            titlesong_audio.currentTime = 0;
+                            PlaySound('intro_to_ducks')
+                            dog_sniff.x = dog_sniff.startx;
+                            dog_sniff.y = dog_sniff.starty;
+                            dog_sniff.f = 0;
+                            dog_sniff.ac = 0;
+                            dog_sniff.s = 0;
+                            dog_sniff.ft = 0;
+                            dog_sniff_anim = true;
+                            gameover = false;
+                            diffuculty = 2;
+                            gamestate = 4;
+                            played_intro_song = false;
+                            setTimeout(() => {//Wait for dog sniff animation full
+                                ResetLevel();
+                                ResetRound();
+                            }, 9000);
+                        }
+                    }
+
                 }else if(gamestate == 1 && shots < maxshots && round_ended == false){
                     PlaySound('gunshot')
                     shots += 1;
@@ -797,7 +864,7 @@
                 for (let i = 0; i < n; i++) {
                     let type = WeightedRandom([0, 1, 2],[0.7, 0.2, 0.9]);
 
-                    let interval =  Math.max(0.2, 1.2 * (1 - level_num * 0.05) * (1 - type * 0.2));
+                    let interval =  Math.max(0.5, 1.2 * (1 - level_num * 0.05) * (1 - type * 0.2));
 
                     let speed = duckv + (level_num*10) + (type*10);
 
@@ -911,6 +978,8 @@
                                 points += 1000;
                                 round_sign_time = 0;
                                 dog_sniff_anim = false;
+                                dog_sniff.bark_ft = .2;
+                                dog_sniff.bark_count = 0;
                                 dog_sniff.x = 80;
                                 dog_sniff.y = dog_sniff.starty;
                                 dog_sniff.s = 0;
@@ -928,6 +997,8 @@
                             }else if (shot_duck_collapse.length >= num_to_shoot){//Win Level
                                 round_sign_time = 0;
                                 dog_sniff_anim = false;
+                                dog_sniff.bark_ft = .2;
+                                dog_sniff.bark_count = 0;
                                 dog_sniff.x = 80;
                                 dog_sniff.y = dog_sniff.starty;
                                 dog_sniff.s = 0;
@@ -939,6 +1010,14 @@
                                     ResetRound();
                                 }, 5000);
                             }else{//Lose Level and reset
+                                dog_sniff_anim = false;
+                                dog_sniff.bark_ft = .2;
+                                dog_sniff.bark_count = 0;
+                                dog_sniff.x = 80;
+                                dog_sniff.y = dog_sniff.starty;
+                                dog_sniff.s = 0;
+                                dog_sniff.f = 0;
+                                dog_sniff.ac = 0;
                                 dog.pt = 0;
                                 dog.y = 300;
                                 dog.d = 1;
@@ -948,6 +1027,9 @@
 
                                 setTimeout(() => { //wait for dog to laugh
                                     gamestate = 0;
+                                    if (points > high_score){
+                                        high_score = points;
+                                    }
                                     points = 0;
                                     level_num = 0;
                                     round_num = 0;
@@ -978,6 +1060,7 @@
                 switch (gamestate) {
                     case 0: //Main Menu
                         MainMenu();
+                        DrawScore(high_score, 370, 395);
                         break;
                     case 1: //Duck Hunting
                         RoundClock();
