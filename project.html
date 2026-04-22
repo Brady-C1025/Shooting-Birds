@@ -29,14 +29,24 @@
 
         <canvas class="gamecanvas" id="GameCanvas" width="640" height="480"></canvas>
         
-        <img id="blackduck_spritesheet" src="img/blackduck.png" style="display: none;">
+        <img id="duck0_spritesheet" src="img/blackduck.png" style="display: none;">
+        <img id="duck1_spritesheet" src="img/blueduck.png" style="display: none;">
+        <img id="duck2_spritesheet" src="img/redduck.png" style="display: none;">
         <img id="mainmenu_spritesheet" src="img/MainMenu.png" style="display: none;">
         <img id="cursor_spritesheet" src="img/cursor.png" style="display: none;">
         <img id="LevelBackground_spritesheet" src="img/LevelBackground.png" style="display: none;">
         <img id="LevelForeground_spritesheet" src="img/LevelForeground.png" style="display: none;">
         <img id="bullet_spritesheet" src="img/bullet.png" style="display: none;">
         <img id="dogwin_spritesheet" src="img/dogwin.png" style="display: none;">
+        <img id="dogsniff_spritesheet" src="img/dogsniff.png" style="display: none;">
         <img id="flyaway_spritesheet" src="img/FlyAway.png" style="display: none;">
+        <img id="roundsign_spritesheet" src="img/roundsign.png" style="display: none;">
+        <img id="gameover_spritesheet" src="img/gameover.png" style="display: none;">
+        <img id="smallpoints_spritesheet" src="img/small_points.png" style="display: none;">
+        <img id="bignums_spritesheet" src="img/bignums.png" style="display: none;">
+        <img id="bignumsgreen_spritesheet" src="img/bignumsgreen.png" style="display: none;">
+        <img id="tallymark_spritesheet" src="img/tallymark.png" style="display: none;">
+        <img id="grassonly_spritesheet" src="img/grassonly.png" style="display: none;">
 
 
         <script>
@@ -48,10 +58,28 @@
             let lasttime = 0; //Used to calculate delta time between frames
             let dt = 0; //delta time
 
+            let round_flash_ft = 0;
+            let round_flash_s = false;
+
             let gamestate = 0;
+            let diffuculty = 2;
+            let level_num = 0;
             let round_num = 0;
+            let num_to_shoot = 6;
+            let shot_duck_counter = {};
+            let shot_duck_collapse = []
+            let shot_duck_animation_ft = 0;
             let round_ended = false;
             let won_round = false;
+            let gameover = false;
+
+            let points = 0;
+            let draw_points = []// type : 0, x : 0, y : 0, ft : 0
+            const smallpoints_spritesheet = document.getElementById("smallpoints_spritesheet");
+            const bignums_spritesheet = document.getElementById("bignums_spritesheet");
+            const bignumsgreen_spritesheet = document.getElementById("bignumsgreen_spritesheet");
+            const tallymark_spritesheet = document.getElementById("tallymark_spritesheet");
+            const roundsign_spritesheet = document.getElementById("roundsign_spritesheet");
 
             let duckv = 150;
             const duck_fall_speed = 200;
@@ -60,19 +88,28 @@
             const duck_scale = 64;
             const duck_change_direction_interval = 1.4;
             const duck_animation_speed = .08;
-            const blackduck_spritesheet = document.getElementById("blackduck_spritesheet");
+            const duck_spritesheets = {0 : document.getElementById("duck0_spritesheet"),
+                                       1 : document.getElementById("duck1_spritesheet"),
+                                       2 : document.getElementById("duck2_spritesheet")};
             let ducks = []
 
             const mainmenu_spritesheet = document.getElementById("mainmenu_spritesheet");
 
             const levelbackground_spritesheet = document.getElementById("LevelBackground_spritesheet");
             const levelforeground_spritesheet = document.getElementById("LevelForeground_spritesheet");
+            const grassonly_spritesheet = document.getElementById("grassonly_spritesheet");
             
             const bullet_spritesheet = document.getElementById("bullet_spritesheet");
             const flyaway_spritesheet = document.getElementById("flyaway_spritesheet");
+            const gameover_spritesheet = document.getElementById("gameover_spritesheet");
             
             const dogwin_spritesheet = document.getElementById("dogwin_spritesheet");
-            let dog = {x : 280, y : 300, d : 1, v : 240, ymin : 200, ymax : 300,pt : 0 , ft : 0 , f : 0, fr : .2}
+            let dog = {x : 265, y : 0, d : 1, v : 240, ymin : 200, ymax : 300,pt : 0 , ft : 0 , f : 0, fr : .1,}//Dog after Round
+
+            const dogsniff_spritesheet = document.getElementById("dogsniff_spritesheet");
+            let dog_sniff = {x : 0, y : 300, ft : 0, f : 0, fr : .15, s : 0, ac : 0,  startx : 0, starty : 255}//Dog at start and between levels
+            let dog_sniff_anim = false;
+            let round_sign_time = 0;
 
             const cursor_scale = 64;
             const cursor_spritesheet = document.getElementById("cursor_spritesheet");
@@ -107,18 +144,20 @@
                     if(duck.s != 2){// check if not dead
                         
                         if(round_ended == false){
-                            if(duck.x <= 0){ //turn around if at edge of canvas
+                            if(duck.x <= 0){ //turn around if at right edge of canvas
                                 duck.d[0] = 0;
-                            }else if(duck.x + duck_scale >= canvas.width){
+                            }else if(duck.x + duck_scale >= canvas.width){ //turn around at left edge
                                 duck.d[0]= Math.PI;
-                            }else if(duck.y + duck_scale >= canvas.height-100){
+                            }else if(duck.y + duck_scale >= canvas.height-100){ //turn around at bottom
                                 duck.d[0]= 3 * Math.PI / 2;
                             }
 
-                            duck.d = GetDuckDirection(duck.d); //update duck location
-                            duck.x += Math.cos(duck.d[0]) * (duck.v*dt);
-                            duck.y += Math.sin(duck.d[0]) * (duck.v*dt);
-                        }else{
+                            if(duck.y >= -80){
+                                duck.d = GetDuckDirection(duck.d); //update duck location
+                                duck.x += Math.cos(duck.d[0]) * (duck.v*dt);
+                                duck.y += Math.sin(duck.d[0]) * (duck.v*dt);
+                            }
+                            }else{
                             if(duck.s != 2){
                                 duck.y -= duck_fly_away_speed*dt;
                                 duck.s = 3;
@@ -151,7 +190,7 @@
                     }
 
                     DrawDuck( // draw the duck
-                        blackduck_spritesheet,
+                        duck.ss,
                         ((duck.f*40)+(duck.s*120)),0,
                         40,40,
                         duck.x, duck.y,
@@ -241,9 +280,8 @@
             function DrawForeGround(){
                 ctx.drawImage(levelforeground_spritesheet,0,0,256,240,0,0,canvas.width, canvas.height)
             }
-
-            function DrawDog(num_of_ducks){
-                
+            
+            function DrawDog(num_of_ducks, pause_time){
                 if(dog.d == 1){// dog up
                     dog.y -= dog.v*dt;
                     if(dog.y < dog.ymin){
@@ -258,7 +296,7 @@
                 }
                 if(dog.d == 0){// dog pause
                     dog.pt += dt
-                    if(dog.pt > .8){
+                    if(dog.pt > pause_time){
                         dog.d = 2;
                     }
                 }
@@ -277,29 +315,305 @@
                     ctx.drawImage(dogwin_spritesheet,(num_of_ducks-1)*60,0,60,60,dog.x,dog.y,120,120)
                 }else{
                     ctx.drawImage(dogwin_spritesheet,180+(60*dog.f),0,60,60,dog.x,dog.y,120,120)
-                    ctx.drawImage(flyaway_spritesheet,0,0,73,17,224,100,219,51)
+                    ctx.drawImage(flyaway_spritesheet,0,0,73,17,265,100,120,30)
+                }
+                if(gameover == true){
+                    ctx.drawImage(gameover_spritesheet,0,0,49,33,275,100,120,80.81)
+                }
+            }
+
+            function DrawDogSniff(full_anim){
+                if(full_anim == true){
+
+                    if(dog_sniff.s == 0){  //Walk 1
+                        if(dog_sniff.ft >= dog_sniff.fr){
+                            dog_sniff.f += 1
+                            dog_sniff.ft = 0;
+                            dog_sniff.ac += 1;
+                        }
+                        if(dog_sniff.f == 4){
+                            dog_sniff.f = 0;
+                        }
+
+                        if(dog_sniff.ac >= 15){
+                            dog_sniff.s = 1;
+                            dog_sniff.ac = 0;
+                            dog_sniff.f = 3;
+                        }
+                        dog_sniff.x += 45*dt
+                    }
+                    if(dog_sniff.s == 1){// Sniff 1
+                        if(dog_sniff.ft >= dog_sniff.fr){
+                            dog_sniff.f += 1
+                            dog_sniff.ft = 0;
+                            dog_sniff.ac += 1;
+                        }
+                        if(dog_sniff.f == 5){
+                            dog_sniff.f = 3;
+                        }
+
+                        if(dog_sniff.ac >= 6){
+                            dog_sniff.s = 2;
+                            dog_sniff.ac = 0;
+                            dog_sniff.f = 0;
+                        }
+                    }
+                    if(dog_sniff.s == 2){// Walk 2
+                        if(dog_sniff.ft >= dog_sniff.fr){
+                            dog_sniff.f += 1
+                            dog_sniff.ft = 0;
+                            dog_sniff.ac += 1;
+                        }
+                        if(dog_sniff.f == 4){
+                            dog_sniff.f = 0;
+                        }
+
+                        if(dog_sniff.ac >= 15){
+                            dog_sniff.s = 3;
+                            dog_sniff.ac = 0;
+                            dog_sniff.f = 3;
+                        }
+                        dog_sniff.x += 45*dt
+                    }
+                    if(dog_sniff.s == 3){//Sniff 2
+                        if(dog_sniff.ft >= dog_sniff.fr){
+                            dog_sniff.f += 1
+                            dog_sniff.ft = 0;
+                            dog_sniff.ac += 1;
+                        }
+                        if(dog_sniff.f == 5){
+                            dog_sniff.f = 3;
+                        }
+
+                        if(dog_sniff.ac >= 6){
+                            dog_sniff.s = 4;
+                            dog_sniff.ac = 0;
+                            dog_sniff.f = 5;
+                        }
+                    }
+                    if(dog_sniff.s == 4){//Jump
+                        if(dog_sniff.ft >= dog_sniff.fr && dog_sniff.ft <= .4){
+                            dog_sniff.x += 200*dt
+                            dog_sniff.y -= 300*dt
+                            dog_sniff.f = 6;
+                        }else if(dog_sniff.ft > .4 && dog_sniff.ft <= 1){
+                            dog_sniff.f = 7;
+                            dog_sniff.x += 110*dt
+                            dog_sniff.y += 200*dt
+                        }
+                    }
+                    
+                    ctx.drawImage(dogsniff_spritesheet,55*dog_sniff.f,0,55,55,dog_sniff.x,dog_sniff.y,120,120)
+
+                    if(dog_sniff.s == 4 && dog_sniff.ft > .6){//draw grass over dog when he jumps in
+                        ctx.drawImage(grassonly_spritesheet,0,0,256,99,0,272,canvas.width, 198)
+                    }
+
+                    dog_sniff.ft += dt;
+                    round_sign_time += dt;
+
+                    if(round_sign_time <= 3){
+                        ctx.drawImage(roundsign_spritesheet,0,0,49,33,275,100,98,66)
+
+                        round_num_list = (level_num+1).toString().split('').map(Number);
+
+                        for(let i = 0; i < round_num_list.length; i++){
+                            ctx.drawImage(bignums_spritesheet,0+(7*round_num_list[i]),0,7,7,324-((round_num_list.length*17)/2)+(17*i),140,16,14)
+                        }
+
+                        
+                    }
+
+
+                }else if(full_anim == false){
+                    if(dog_sniff.s == 0){// Walk 1
+                        if(dog_sniff.ft >= dog_sniff.fr){
+                            dog_sniff.f += 1
+                            dog_sniff.ft = 0;
+                            dog_sniff.ac += 1;
+                        }
+                        if(dog_sniff.f == 4){
+                            dog_sniff.f = 0;
+                        }
+
+                        if(dog_sniff.ac >= 15){
+                            dog_sniff.s = 1;
+                            dog_sniff.ac = 0;
+                            dog_sniff.f = 3;
+                        }
+                        dog_sniff.x += 45*dt
+                    }
+                    if(dog_sniff.s == 1){//Sniff 1
+                        if(dog_sniff.ft >= dog_sniff.fr){
+                            dog_sniff.f += 1
+                            dog_sniff.ft = 0;
+                            dog_sniff.ac += 1;
+                        }
+                        if(dog_sniff.f == 5){
+                            dog_sniff.f = 3;
+                        }
+
+                        if(dog_sniff.ac >= 6){
+                            dog_sniff.s = 2;
+                            dog_sniff.ac = 0;
+                            dog_sniff.f = 5;
+                        }
+                    }
+                    if(dog_sniff.s == 2){//Jump
+                        if(dog_sniff.ft >= dog_sniff.fr && dog_sniff.ft <= .4){
+                            dog_sniff.x += 200*dt
+                            dog_sniff.y -= 300*dt
+                            dog_sniff.f = 6;
+                        }else if(dog_sniff.ft > .4 && dog_sniff.ft <= 1){
+                            dog_sniff.f = 7;
+                            dog_sniff.x += 110*dt
+                            dog_sniff.y += 200*dt
+                        }
+                    }
+                    
+                    ctx.drawImage(dogsniff_spritesheet,55*dog_sniff.f,0,55,55,dog_sniff.x,dog_sniff.y,120,120)
+
+                    if(dog_sniff.s == 2 && dog_sniff.ft > .6){//draw grass over dog when he jumps in
+                        ctx.drawImage(grassonly_spritesheet,0,0,256,99,0,272,canvas.width, 198)
+                    }
+                    
+                    dog_sniff.ft += dt;
+                    round_sign_time += dt;
+
+                    if(round_sign_time <= 3){
+                        ctx.drawImage(roundsign_spritesheet,0,0,49,33,275,100,98,66)
+                        ctx.drawImage(bignums_spritesheet,0+(7*(level_num+1)),0,7,7,315,140,16,14)
+                    }
+                }
+            }
+
+            function DrawPoints(){
+                for (let point of draw_points){
+                    point.ft += dt;
+                    if(point.ft >= .3){
+                        ctx.drawImage(smallpoints_spritesheet,14*point.type,0,14,7,point.x,point.y,28,14)
+                    }
+                }
+            }
+
+            function DrawScore(score, x, y){
+                score_string = score.toString().padStart(6, "0").split("").map(Number);
+
+                for (let i=0; i < score_string.length; i++){
+                    ctx.drawImage(bignums_spritesheet,0+(7*score_string[i]),0,7,7,x+(i*20),y,16,14)
+                }
+            }
+
+            function DrawRoundNum(round, x, y){
+                round_list = round.toString().split('').map(Number);
+
+                for(i = 0; i < round_list.length; i++){
+                    ctx.drawImage(bignumsgreen_spritesheet,0+(7*round_list[i]),0,7,7,x+(17*i),y,16,14)
+                }
+            }
+
+            function DrawTallyMarks(ducks_to_shoot, x, y){
+                for (let i = 0; i < num_to_shoot; i++){
+                    ctx.drawImage(tallymark_spritesheet,0,0,7,4,x+(20*i),y,17,12)
+                }
+            }
+
+            function DrawDuckCounter(ducks_shot, x, y){
+                for (let duck in shot_duck_counter){
+                    if (shot_duck_counter[duck] == 1){
+                        ctx.drawImage(tallymark_spritesheet,7,0,7,7,x+(20*(duck-1)),y,17,16);
+                    }
+                }
+
+                for(i = 0; i < 11; i++){
+                    if((diffuculty == 1 && i == round_num - 1) || (diffuculty == 2 && (i == round_num - 3 || i == round_num - 2))){
+                        if (round_flash_s == true){
+                                ctx.drawImage(tallymark_spritesheet,14,0,7,7,x+(20*(i-1)),y,17,16);
+                            }
+                        }
+                }
+                if(round_flash_ft >= .5){
+                    round_flash_ft = 0;
+                    round_flash_s = !round_flash_s;
+                }
+                round_flash_ft += dt;
+            }
+
+            function DrawDuckCounterCollapse(ducks_shot, x, y){
+                
+                if(shot_duck_collapse.length == 0){
+                    for (let duck in shot_duck_counter){
+                        shot_duck_collapse.push(shot_duck_counter[duck]);
+                    }
+                }
+                if(shot_duck_animation_ft >= .3){
+                    if (shot_duck_collapse.indexOf(0) != -1){
+                        shot_duck_animation_ft = 0;
+                        shot_duck_collapse.splice(shot_duck_collapse.indexOf(0),1);
+                    }
+                }else{
+                    shot_duck_animation_ft += dt;
+                }
+
+                for(let i = 0; i < shot_duck_collapse.length; i++){
+                    if(shot_duck_collapse[i] == 1){
+                        ctx.drawImage(tallymark_spritesheet,7,0,7,7,x+(20*i),y,17,16)
+                    }
                 }
             }
 
             function ResetRound(){
-                round_ended = false;
-                ducks = [];
-                GenerateDucks(2,duckv)
-                shots = 0;
-                dog.pt = 0
-                dog.y = 300
-                dog.d = 1
-                round_num += 1
-                gamestate = 1;
+                if(round_num <= 10){
+                    round_ended = false;
+                    ducks = [];
+                    GenerateDucks(diffuculty,duckv);
+                    shots = 0;
+                    dog.pt = 0;
+                    dog.y = 300;
+                    dog.d = 1;
+                    round_num += diffuculty;
+                    gamestate = 1;
+                    draw_points = [];
+                }else if(round_num > 10){
+                    EndLevel();
+                }
+            }
+
+            function ResetLevel(){
+                round_num = diffuculty;
+                level_num += 1;
+                num_to_shoot += 1;
+                shot_duck_counter = {};
+                shot_duck_collapse = [];
+                shot_duck_animation_ft = 0;
             }
 
             function Click(x,y){
                 if(gamestate == 0){
-                    ResetRound()
+                    dog_sniff.x = dog_sniff.startx;
+                    dog_sniff.y = dog_sniff.starty;
+                    dog_sniff.f = 0;
+                    dog_sniff.ac = 0;
+                    dog_sniff.s = 0;
+                    dog_sniff.ft = 0;
+                    dog_sniff_anim = true;
+                    gameover = false;
+                    gamestate = 4;
+                    setTimeout(() => {//Wait for dog sniff animation full
+                        num_to_shoot = 5;//becasuse reset round adds another again
+                        ResetLevel();
+                        ResetRound();
+                    }, 9000);
+                    
                 }else if(gamestate == 1 && shots < maxshots && round_ended == false){
                     shots += 1;
                     for (let duck of ducks){
                         if((x > duck.x && x < (duck.x + duck_scale)) && (y > duck.y && y < (duck.y + duck_scale)) && duck.s != 2){
+                            draw_points.push({type : duck.t, x : duck.x+20, y : duck.y+40, ft : 0})
+                            if(duck.t == 0) points += 500;
+                            if(duck.t == 1) points += 1000;
+                            if(duck.t == 2) points += 1500;
+                            shot_duck_counter[Object.keys(shot_duck_counter).length+1] = 1;
                             duck.s = 2;
                             duck.f = 0;
                         }
@@ -309,10 +623,13 @@
             
             function GenerateDucks(n,v){
                 for (let i = 0; i < n; i++) {
+                    type = WeightedRandom([0, 1, 2],[0.7, 0.2, 0.9]);
                     ducks.push({x : Math.floor(Math.random() * 640) + 1, y : duck_spawn_y, //x/y pos. of duck
                                 v : v, //velocity/speed
                                 s : 0, f : 0, ft : 0, //s is state, f is frame, ft is frametick
-                                d : [3 * Math.PI / 2,duck_change_direction_interval] //d is direction and time since last change)
+                                d : [3 * Math.PI / 2,duck_change_direction_interval], //d is direction and time since last change)
+                                ss : duck_spritesheets[type], //type of duck 0-Green, 1-Blue, 2-Red
+                                t : type,
                                 });
                 }
             }
@@ -339,7 +656,7 @@
                         if(duck.s != 2 && duck.y > -80){
                             aliveducks += 1;
                         }
-                        if(duck.y < -80){
+                        if(duck.y < -40){
                             goneducks += 1;
                         }
                     }
@@ -354,13 +671,24 @@
                         EndRound()
                         round_ended = true;
                         won_round = false;
+                        
+                        for (let i = diffuculty; i > diffuculty - aliveducks - goneducks; i--){
+                            shot_duck_counter[Object.keys(shot_duck_counter).length+1] = 0;
+                        }
                     }
 
                     if(shots == maxshots && (aliveducks > 0 || goneducks > 0)){
                         EndRound()
                         round_ended = true;
                         won_round = false;
+                        
+
+                        for (let i = diffuculty; i > diffuculty - aliveducks - goneducks; i--){
+                            shot_duck_counter[Object.keys(shot_duck_counter).length+1] = 0;
+                        }
                     }
+
+
                 }
             }
 
@@ -373,7 +701,52 @@
                 }, 2000);
             }
             
+            function EndLevel(){
+                setTimeout(() => {//Wait for Ducks to fall
+                    gamestate = 3;
+                    setTimeout(() => {//Wait for ducks to tally
 
+                        if (shot_duck_collapse.length >= num_to_shoot){//Win Level
+                            round_sign_time = 0;
+                            dog_sniff_anim = false;
+                            dog_sniff.x = 80;
+                            dog_sniff.y = dog_sniff.starty;
+                            dog_sniff.s = 0;
+                            dog_sniff.f = 0;
+                            dog_sniff.ac = 0;
+                            gamestate = 4; 
+                            setTimeout(() => { //wait for dog to sniff
+                                ResetLevel();
+                                ResetRound();
+                            }, 5000);
+                        }else{//Lose Level and reset
+                            dog.pt = 0;
+                            dog.y = 300;
+                            dog.d = 1;
+                            won_round = false;
+                            gameover = true;
+                            gamestate = 5;
+                            setTimeout(() => { //wait for dog to laugh
+                                gamestate = 0;
+                                points = 0;
+                                level_num = 0;
+                                round_num = 0;
+                                round_sign_time = 0;
+                            }, 5000);
+                        }
+                    }, 3000);
+                }, 1);
+            }
+
+            function WeightedRandom(values,weights){
+                let r = Math.random();
+                let sum = 0;
+
+                for (let i = 0; i < values.length; i++) {
+                    sum += weights[i];
+                    if (r < sum) return values[i];
+                }
+            }
 
 
             function update(currentTime){
@@ -383,21 +756,59 @@
 
                 ctx.clearRect(0, 0, canvas.width, canvas.height)
                 switch (gamestate) {
-                    case 0:
+                    case 0: //Main Menu
                         MainMenu();
                         break;
-                    case 1:
+                    case 1: //Duck Hunting
                         DrawBackground();
                         UpdateDucks();
                         DrawForeGround();
+                        DrawPoints();
                         UpdateShots(shots);
+                        DrawScore(points, 481, 415);
+                        DrawRoundNum(level_num,100,384);
+                        DrawTallyMarks(num_to_shoot, 240, 435);
+                        DrawDuckCounter(shot_duck_counter,240, 417);
                         CheckIfWon();
+
                         break;
-                    case 2:
+                    case 2: // End of Round
                         DrawBackground();
-                        DrawDog(ducks.length);
+                        DrawDog(ducks.length, .8);
                         DrawForeGround();
                         UpdateShots(shots);
+                        DrawScore(points, 481, 415);
+                        DrawRoundNum(level_num,100,384);
+                        DrawTallyMarks(num_to_shoot, 240, 435);
+                        DrawDuckCounter(shot_duck_counter,240, 417);
+                        break;
+                    case 3: // End of Level
+                        DrawBackground();
+                        DrawForeGround();
+                        DrawDuckCounterCollapse(shot_duck_counter,240, 417);
+                        UpdateShots(shots);
+                        DrawScore(points, 481, 415);
+                        DrawRoundNum(level_num,100,384);
+                        DrawTallyMarks(num_to_shoot, 240, 435);
+                        break;
+                    case 4: //Dog Sniffing Animation with Level Sign
+                        DrawBackground();
+                        DrawForeGround();
+                        DrawDogSniff(dog_sniff_anim);
+                        UpdateShots(shots);
+                        DrawScore(points, 481, 415);
+                        DrawRoundNum(level_num+1,100,384);
+                        DrawTallyMarks(num_to_shoot+1, 240, 435);
+                        break;
+                    case 5: //Game Over
+                        DrawBackground();
+                        DrawDog(1,6);
+                        DrawForeGround();
+                        DrawDuckCounterCollapse(shot_duck_counter,240, 417);
+                        UpdateShots(shots);
+                        DrawScore(points, 481, 415);
+                        DrawRoundNum(level_num+1,100,384);
+                        DrawTallyMarks(num_to_shoot+1, 240, 435);
                         break;
                 }       
                 DrawCursor()
