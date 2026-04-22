@@ -42,6 +42,7 @@
         <img id="flyaway_spritesheet" src="img/FlyAway.png" style="display: none;">
         <img id="roundsign_spritesheet" src="img/roundsign.png" style="display: none;">
         <img id="gameover_spritesheet" src="img/gameover.png" style="display: none;">
+        <img id="perfect_spritesheet" src="img/perfect.png" style="display: none;">
         <img id="smallpoints_spritesheet" src="img/small_points.png" style="display: none;">
         <img id="bignums_spritesheet" src="img/bignums.png" style="display: none;">
         <img id="bignumsgreen_spritesheet" src="img/bignumsgreen.png" style="display: none;">
@@ -63,15 +64,18 @@
 
             let gamestate = 0;
             let diffuculty = 2;
-            let level_num = 0;
+            let level_num = 8;
             let round_num = 0;
-            let num_to_shoot = 6;
+            let num_to_shoot = 0;
             let shot_duck_counter = {};
             let shot_duck_collapse = []
             let shot_duck_animation_ft = 0;
             let round_ended = false;
             let won_round = false;
             let gameover = false;
+            let perfect_level = false;
+            let round_clock = 0;
+            let round_clock_status = 'waiting';
 
             let points = 0;
             let draw_points = []// type : 0, x : 0, y : 0, ft : 0
@@ -80,13 +84,14 @@
             const bignumsgreen_spritesheet = document.getElementById("bignumsgreen_spritesheet");
             const tallymark_spritesheet = document.getElementById("tallymark_spritesheet");
             const roundsign_spritesheet = document.getElementById("roundsign_spritesheet");
+            const perfect_spritesheet = document.getElementById("perfect_spritesheet");
 
-            let duckv = 150;
+            let duckv = 200;
             const duck_fall_speed = 200;
             const duck_fly_away_speed = 280;  
             const duck_spawn_y = 300;       
-            const duck_scale = 64;
-            const duck_change_direction_interval = 1.4;
+            const duck_scale = 80;
+            const duck_change_direction_interval = 1.5;
             const duck_animation_speed = .08;
             const duck_spritesheets = {0 : document.getElementById("duck0_spritesheet"),
                                        1 : document.getElementById("duck1_spritesheet"),
@@ -140,19 +145,20 @@
 
             function UpdateDucks(){
                 for (let duck of ducks){
-
                     if(duck.s != 2){// check if not dead
                         
                         if(round_ended == false){
-                            if(duck.x <= 0){ //turn around if at right edge of canvas
+                            if(duck.x <= 0 && round_clock_status != 'ended'){ //turn around if at right edge of canvas
                                 duck.d[0] = 0;
-                            }else if(duck.x + duck_scale >= canvas.width){ //turn around at left edge
+                            }else if(duck.x + duck_scale >= canvas.width  && round_clock_status != 'ended'){ //turn around at left edge
                                 duck.d[0]= Math.PI;
-                            }else if(duck.y + duck_scale >= canvas.height-100){ //turn around at bottom
+                            }else if(duck.y + duck_scale >= canvas.height-150){ //turn around at bottom
                                 duck.d[0]= 3 * Math.PI / 2;
+                            }else if(duck.y <= 0  && round_clock_status != 'ended'){
+                                duck.d[0]= Math.PI / 2;
                             }
-
-                            if(duck.y >= -80){
+                            
+                            if(duck.y >= -80 && duck.x+duck_scale > 0 && duck.x < canvas.width){
                                 duck.d = GetDuckDirection(duck.d); //update duck location
                                 duck.x += Math.cos(duck.d[0]) * (duck.v*dt);
                                 duck.y += Math.sin(duck.d[0]) * (duck.v*dt);
@@ -213,11 +219,11 @@
             }
 
             function GetDuckDirection(direction){ //sets a random direction
-                if(direction[1] > duck_change_direction_interval){
+                if(direction[1] > direction[2]){
                     angle = Math.random() * Math.PI * 2;
-                    return [angle, 0]
+                    return [angle, 0, direction[2]]
                 }else{
-                    return [direction[0],direction[1]+=dt]
+                    return [direction[0],direction[1]+=dt,direction[2]]
                 }
             }
 
@@ -311,14 +317,17 @@
                     dog.ft += dt;
                 }
 
-                if(won_round == true){//draw the sprite depending on win or lose round.
+                if(won_round == true && perfect_level == false){//draw the sprite depending on win or lose round.
                     ctx.drawImage(dogwin_spritesheet,(num_of_ducks-1)*60,0,60,60,dog.x,dog.y,120,120)
                 }else{
                     ctx.drawImage(dogwin_spritesheet,180+(60*dog.f),0,60,60,dog.x,dog.y,120,120)
                     ctx.drawImage(flyaway_spritesheet,0,0,73,17,265,100,120,30)
                 }
                 if(gameover == true){
-                    ctx.drawImage(gameover_spritesheet,0,0,49,33,275,100,120,80.81)
+                    ctx.drawImage(gameover_spritesheet,0,0,49,33,265,85,120,80.81)
+                }
+                if(perfect_level == true){
+                    ctx.drawImage(perfect_spritesheet,0,0,70,33,240,79.5,171.42,80.81)
                 }
             }
 
@@ -415,13 +424,11 @@
                     if(round_sign_time <= 3){
                         ctx.drawImage(roundsign_spritesheet,0,0,49,33,275,100,98,66)
 
-                        round_num_list = (level_num+1).toString().split('').map(Number);
-
+                        let round_num_list = (level_num+1).toString().split('').map(Number);
+                        console.log(round_num_list)
                         for(let i = 0; i < round_num_list.length; i++){
                             ctx.drawImage(bignums_spritesheet,0+(7*round_num_list[i]),0,7,7,324-((round_num_list.length*17)/2)+(17*i),140,16,14)
                         }
-
-                        
                     }
 
 
@@ -482,7 +489,12 @@
 
                     if(round_sign_time <= 3){
                         ctx.drawImage(roundsign_spritesheet,0,0,49,33,275,100,98,66)
-                        ctx.drawImage(bignums_spritesheet,0+(7*(level_num+1)),0,7,7,315,140,16,14)
+
+                        let round_num_list = (level_num+1).toString().split('').map(Number);
+                        console.log(round_num_list)
+                        for(let i = 0; i < round_num_list.length; i++){
+                            ctx.drawImage(bignums_spritesheet,0+(7*round_num_list[i]),0,7,7,324-((round_num_list.length*17)/2)+(17*i),140,16,14)
+                        }
                     }
                 }
             }
@@ -562,11 +574,32 @@
                 }
             }
 
+            function RoundClock(){
+                if(round_clock_status == 'waiting'){
+                    round_clock_status = 'running';
+                }
+                if(round_clock_status == 'running'){
+                    round_clock += dt;
+                }
+                if(round_clock >= 5){
+                    round_clock_status = 'ended'
+                    round_clock = 0;
+                }
+            }
+            
+            function NumberToShoot(level_number){
+                if (level_number < 10) return 6;
+                if (level_number >= 10 && level_number < 13) return 7;
+                if (level_number >= 13 && level_number < 15) return 8;
+                if (level_number >= 15 && level_number < 20) return 9;
+                if (level_number >= 20) return 10;
+            }
+
             function ResetRound(){
                 if(round_num <= 10){
                     round_ended = false;
                     ducks = [];
-                    GenerateDucks(diffuculty,duckv);
+                    GenerateDucks(diffuculty);
                     shots = 0;
                     dog.pt = 0;
                     dog.y = 300;
@@ -574,6 +607,8 @@
                     round_num += diffuculty;
                     gamestate = 1;
                     draw_points = [];
+                    round_clock_status = 'waiting';
+                    round_clock = 0;
                 }else if(round_num > 10){
                     EndLevel();
                 }
@@ -581,8 +616,9 @@
 
             function ResetLevel(){
                 round_num = diffuculty;
+                perfect_level = false;
                 level_num += 1;
-                num_to_shoot += 1;
+                num_to_shoot = NumberToShoot(level_num);
                 shot_duck_counter = {};
                 shot_duck_collapse = [];
                 shot_duck_animation_ft = 0;
@@ -600,7 +636,6 @@
                     gameover = false;
                     gamestate = 4;
                     setTimeout(() => {//Wait for dog sniff animation full
-                        num_to_shoot = 5;//becasuse reset round adds another again
                         ResetLevel();
                         ResetRound();
                     }, 9000);
@@ -621,18 +656,23 @@
                 }
             }
             
-            function GenerateDucks(n,v){
+            function GenerateDucks(n){
                 for (let i = 0; i < n; i++) {
-                    type = WeightedRandom([0, 1, 2],[0.7, 0.2, 0.9]);
+                    let type = WeightedRandom([0, 1, 2],[0.7, 0.2, 0.9]);
+
+                    let interval =  Math.max(0.2, 1.2 * (1 - level_num * 0.05) * (1 - type * 0.2));
+
+                    let speed = duckv + (level_num*10) + (type*10);
+
                     ducks.push({x : Math.floor(Math.random() * 640) + 1, y : duck_spawn_y, //x/y pos. of duck
-                                v : v, //velocity/speed
+                                v : speed, //velocity/speed
                                 s : 0, f : 0, ft : 0, //s is state, f is frame, ft is frametick
-                                d : [3 * Math.PI / 2,duck_change_direction_interval], //d is direction and time since last change)
+                                d : [3 * Math.PI / 2, duck_change_direction_interval, interval], //d is direction and time since last change)
                                 ss : duck_spritesheets[type], //type of duck 0-Green, 1-Blue, 2-Red
                                 t : type,
                                 });
                 }
-            }
+            }//
 
             function UpdateShots(x){
                 if(x == 0){
@@ -649,35 +689,54 @@
 
             function CheckIfWon(){
 
-                aliveducks = 0;
-                goneducks = 0;
+                let aliveducks = 0;
+                let goneducks = 0;
                 if(round_ended == false){
-                    for (let duck of ducks){
-                        if(duck.s != 2 && duck.y > -80){
-                            aliveducks += 1;
+                    for (let duck of ducks) {
+
+                        let offscreen =
+                            duck.y < -40 ||
+                            duck.x + duck_scale <= 0 ||
+                            duck.x > canvas.width;
+
+                        if (offscreen && duck.s != 2) {
+                            goneducks++;
                         }
-                        if(duck.y < -40){
-                            goneducks += 1;
+                        else if (duck.s != 2) {
+                            aliveducks++;
+                        }
+                    }
+                    if(goneducks == diffuculty){ //Both Fly off Screen
+                        EndRound()
+                        round_ended = true;
+                        won_round = false;
+                        
+                        for (let i = diffuculty; i > diffuculty - aliveducks - goneducks; i--){
+                            shot_duck_counter[Object.keys(shot_duck_counter).length+1] = 0;
                         }
                     }
 
-                    if(aliveducks == 0 && goneducks == 0){
+                    if(aliveducks == 0 && goneducks > 0){ //Lose, no alive ducks left and more than 1 off screen
+                        EndRound()
+                        round_ended = true;
+                        won_round = false;
+                        
+                        for (let i = diffuculty; i > diffuculty - aliveducks - goneducks; i--){
+                            shot_duck_counter[Object.keys(shot_duck_counter).length+1] = 0;
+                        }
+                    }
+
+                    if(aliveducks == 0 && goneducks == 0){ //Win, both are shot
                         EndRound()
                         round_ended = true;
                         won_round = true;
-                    }
-
-                    if(aliveducks == 0 && goneducks > 0){
-                        EndRound()
-                        round_ended = true;
-                        won_round = false;
                         
                         for (let i = diffuculty; i > diffuculty - aliveducks - goneducks; i--){
                             shot_duck_counter[Object.keys(shot_duck_counter).length+1] = 0;
                         }
                     }
 
-                    if(shots == maxshots && (aliveducks > 0 || goneducks > 0)){
+                    if(shots == maxshots && (aliveducks > 0 || goneducks > 0)){//Ran out of shots lose
                         EndRound()
                         round_ended = true;
                         won_round = false;
@@ -687,8 +746,6 @@
                             shot_duck_counter[Object.keys(shot_duck_counter).length+1] = 0;
                         }
                     }
-
-
                 }
             }
 
@@ -705,8 +762,26 @@
                 setTimeout(() => {//Wait for Ducks to fall
                     gamestate = 3;
                     setTimeout(() => {//Wait for ducks to tally
-
-                        if (shot_duck_collapse.length >= num_to_shoot){//Win Level
+                        
+                        if (shot_duck_collapse.length == 10){
+                            points += 1000;
+                            round_sign_time = 0;
+                            dog_sniff_anim = false;
+                            dog_sniff.x = 80;
+                            dog_sniff.y = dog_sniff.starty;
+                            dog_sniff.s = 0;
+                            dog_sniff.f = 0;
+                            dog_sniff.ac = 0;
+                            gamestate = 5;
+                            perfect_level = true;
+                            setTimeout(() => { //wait for perfect sign
+                                gamestate = 4; 
+                                setTimeout(() => { //wait for dog to sniff
+                                    ResetLevel();
+                                    ResetRound();
+                                }, 5000);
+                            }, 2000);
+                        }else if (shot_duck_collapse.length >= num_to_shoot){//Win Level
                             round_sign_time = 0;
                             dog_sniff_anim = false;
                             dog_sniff.x = 80;
@@ -734,7 +809,7 @@
                                 round_sign_time = 0;
                             }, 5000);
                         }
-                    }, 3000);
+                    }, 2000);
                 }, 1);
             }
 
@@ -760,6 +835,7 @@
                         MainMenu();
                         break;
                     case 1: //Duck Hunting
+                        RoundClock();
                         DrawBackground();
                         UpdateDucks();
                         DrawForeGround();
@@ -800,7 +876,7 @@
                         DrawRoundNum(level_num+1,100,384);
                         DrawTallyMarks(num_to_shoot+1, 240, 435);
                         break;
-                    case 5: //Game Over
+                    case 5: //Game Over/Perfect Round
                         DrawBackground();
                         DrawDog(1,6);
                         DrawForeGround();
