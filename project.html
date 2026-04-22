@@ -54,6 +54,7 @@
         <img id="bignumsgreen_spritesheet" src="img/bignumsgreen.png" style="display: none;">
         <img id="tallymark_spritesheet" src="img/tallymark.png" style="display: none;">
         <img id="grassonly_spritesheet" src="img/grassonly.png" style="display: none;">
+        <img id="gunflash_spritesheet" src="img/gunflash.png" style="display: none;">
 
 
         <script>
@@ -103,6 +104,7 @@
             let round_clock_status = 'waiting';
             let played_intro_song = true;
             let clicks = 0;
+            let show_gun_flash = false;
 
             let points = 0;
             let high_score = 0;
@@ -113,6 +115,7 @@
             const tallymark_spritesheet = document.getElementById("tallymark_spritesheet");
             const roundsign_spritesheet = document.getElementById("roundsign_spritesheet");
             const perfect_spritesheet = document.getElementById("perfect_spritesheet");
+            const gunflash_spritesheet = document.getElementById("gunflash_spritesheet");
 
             let duckv = 200;
             const duck_fall_speed = 200;
@@ -495,7 +498,6 @@
                             dogbark_audio.currentTime = 0;
                             PlaySound('dog_bark')
                         }else{
-                            console.log(dog_sniff.bark_ft >= .05, dog_sniff.bark_ft)
                             dog_sniff.bark_ft += dt;
                         }
 
@@ -571,7 +573,6 @@
                             dogbark_audio.currentTime = 0;
                             PlaySound('dog_bark')
                         }else{
-                            console.log(dog_sniff.bark_ft >= .05, dog_sniff.bark_ft)
                             dog_sniff.bark_ft += dt;
                         }
 
@@ -845,6 +846,7 @@
 
                 }else if(gamestate == 1 && shots < maxshots && round_ended == false){
                     PlaySound('gunshot')
+                    show_gun_flash = true;
                     shots += 1;
                     for (let duck of ducks){
                         if((x > duck.x && x < (duck.x + duck_scale)) && (y > duck.y && y < (duck.y + duck_scale)) && duck.s != 2){
@@ -1117,6 +1119,11 @@
                         break;
                 }       
                 DrawCursor()
+                if (show_gun_flash == true){
+                    ctx.drawImage(gunflash_spritesheet,0,0,256,224,0,0,canvas.width,canvas.height)
+                    show_gun_flash = false;
+                }
+                
                 requestAnimationFrame(update);
             }
 
