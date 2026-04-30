@@ -87,10 +87,11 @@
 
         <script>
 
-            var canvas = document.getElementById("GameCanvas");
+            var canvas = document.getElementById("GameCanvas"); //Save a refrence to the Canvas Element
             var ctx = canvas.getContext("2d");
-            ctx.imageSmoothingEnabled = false;
+            ctx.imageSmoothingEnabled = false;//Changes how the pixels are rendered, makes them not blurry
 
+            //Initilizing the Audio
             const clearround_audio = new Audio('sounds/Clear_Round.mp3');
             const dogbark_audio = new Audio('sounds/Dog_Bark.mp3');
             const doglaugh_audio = new Audio('sounds/Dog_Laugh.wav');
@@ -107,36 +108,7 @@
             const duckfalling_audio = new Audio('sounds/Duck_Falling.mp3');
             const deadducklands_audio = new Audio('sounds/Dead_Duck_Lands.mp3');
             const hitduck_audio = new Audio('sounds/Hit_Duck.mp3');
-            
-            let lasttime = 0; //Used to calculate delta time between frames
-            let dt = 0; //delta time
 
-            let round_flash_ft = 0;
-            let round_flash_s = false;
-
-            let gamestate = 0;
-            let diffuculty = 2;
-            let level_num = 0;
-            let round_num = 0;
-            let end_of_level = false;
-            let num_to_shoot = 0;
-            let shot_duck_counter = {};
-            let shot_duck_collapse = []
-            let shot_duck_collapse_finished = false;
-            let shot_duck_animation_ft = 0;
-            let round_ended = false;
-            let won_round = false;
-            let gameover = false;
-            let perfect_level = false;
-            let round_clock = 0;
-            let round_clock_status = 'waiting';
-            let played_intro_song = true;
-            let clicks = 0;
-            let show_gun_flash = false;
-
-            let points = 0;
-            let high_score = 0;
-            let draw_points = []// type : 0, x : 0, y : 0, ft : 0
             const smallpoints_spritesheet = document.getElementById("smallpoints_spritesheet");
             const bignums_spritesheet = document.getElementById("bignums_spritesheet");
             const bignumsgreen_spritesheet = document.getElementById("bignumsgreen_spritesheet");
@@ -144,66 +116,98 @@
             const roundsign_spritesheet = document.getElementById("roundsign_spritesheet");
             const perfect_spritesheet = document.getElementById("perfect_spritesheet");
             const gunflash_spritesheet = document.getElementById("gunflash_spritesheet");
-
-            let duckv = 200;
-            const duck_fall_speed = 200;
-            const duck_fly_away_speed = 280;  
-            const duck_spawn_y = 300;       
-            const duck_scale = 80;
-            const duck_change_direction_interval = 1.5;
-            const duck_animation_speed = .08;
-            const duck_flap_sound_speed = 0.2;
-            let duck_flap_ft = 0;
             const duck_spritesheets = {0 : document.getElementById("duck0_spritesheet"),
                                        1 : document.getElementById("duck1_spritesheet"),
                                        2 : document.getElementById("duck2_spritesheet")};
-            let ducks = []
-
             const mainmenu_spritesheet = document.getElementById("mainmenu_spritesheet");
-
             const levelbackground_spritesheet = document.getElementById("LevelBackground_spritesheet");
             const levelforeground_spritesheet = document.getElementById("LevelForeground_spritesheet");
             const grassonly_spritesheet = document.getElementById("grassonly_spritesheet");
-            
             const bullet_spritesheet = document.getElementById("bullet_spritesheet");
             const flyaway_spritesheet = document.getElementById("flyaway_spritesheet");
             const gameover_spritesheet = document.getElementById("gameover_spritesheet");
-            
             const dogwin_spritesheet = document.getElementById("dogwin_spritesheet");
-            let dog = {x : 265, y : 0, d : 1, v : 240, ymin : 200, ymax : 300,pt : 0 , ft : 0 , f : 0, fr : .1,}//Dog after Round
-
             const dogsniff_spritesheet = document.getElementById("dogsniff_spritesheet");
-            let dog_sniff = {x : 0, y : 300, ft : 0, f : 0, fr : .15, s : 0, ac : 0,  startx : 0, starty : 255, bark_ft : .2, bark_count : 0}//Dog at start and between levels
-            let dog_sniff_anim = false;
-            let round_sign_time = 0;
-
-            const cursor_scale = 64;
             const cursor_spritesheet = document.getElementById("cursor_spritesheet");
-            let mouseX = 0;
-            let mouseY = 0;
-            let clickX = 0;
-            let clickY = 0;
-            let maxshots = 3;
-            let shots = 0;
-            canvas.addEventListener("mousemove", function (e) {
+
+
+            let lasttime = 0; //Used to calculate delta time between frames
+            let dt = 0; //delta time
+
+            let round_flash_ft = 0;//The FrameTime for the Round Sign
+            let round_flash_s = false;//Is the Round Sign Showing
+
+            let gamestate = 0;//Used to track the state of the game
+            let diffuculty = 2;//Sets the number of ducks to spawn each round. Is changed when user clicks of difficulty when starting game.
+            let level_num = 0;//The Round Number, first round sets it to 1.
+            let round_num = 0;//Counts which set of ducks is being released, increments by the number of ducks(difficulty).
+            let end_of_level = false;//Changes to true when the level ends. Used to play the specific dog animations for the end of level
+            let num_to_shoot = 0;//The Number of ducks the user has to shoot. Changes based on the level_num.
+            let shot_duck_counter = {};//Tracks which ducks were shot and on what round, stores it as round_num : 1 or 0 based on if shot or not.
+            let shot_duck_collapse = []//Used at the end of the level for the collapsing score, removes all the 0s and displays the shot ducks.
+            let shot_duck_collapse_finished = false;//Used to track the status of the collapsing score.
+            let shot_duck_animation_ft = 0;//Used to track the frame tick for the collapsing animation
+            let round_ended = false;//set to true when round ends. Allows the ducks to fly away when round ends
+            let won_round = false;//When round ends set to true if won
+            let gameover = false;//When level ends set to true if lost level
+            let perfect_level = false;//When level ends set to true if got perfect score.
+            let round_clock = 0;//Used to track the round clock time.
+            let round_clock_status = 'waiting';//Used to Track the status of the round clock
+            let played_intro_song = true;//Used to see if Title_song has played once when in main menu.
+            let clicks = 0;//Used to track if the user has clicked on the game once at the beginning main menu.
+            let show_gun_flash = false;//Used to track the gun flash, set to true when want to show it then immediatly sets to false.
+
+            let points = 0;//Tracks the points
+            let high_score = 0;//Tracks the HighScore
+            let draw_points = []//Used to draw the small points on screen when duck gets shot.
+
+            let duckv = 200; //The Base Duck speed before any multipliers
+            const duck_fall_speed = 200;//The speed the duck falls
+            const duck_fly_away_speed = 280;  //The speed the duck flys away at
+            const duck_spawn_y = 300; //The base Y location the duck spawns at, overridden if its the second duck to spawn (see GenerateDucks()).
+            const duck_scale = 80;//The X and Y scale of the duck
+            const duck_change_direction_interval = 1.5;//The base interval time that the duck will change directions. Changed by the multipliers in GenerateDucks()
+            const duck_animation_speed = .08;//The Animation Speed of the Ducks
+            const duck_flap_sound_speed = 0.2;//The frequency that the duck flap sound is played
+            let duck_flap_ft = 0;//The FrameTick/Timer for the duck flap sound
+
+            let ducks = []//Used to track the current ducks. See Generate Ducks for structure.
+
+            let dog = {x : 265, y : 0, d : 1, v : 240, ymin : 200, ymax : 300,pt : 0 , ft : 0 , f : 0, fr : .1,}// Used to Track the animations for the Dog between sub rounds
+
+
+            let dog_sniff = {x : 0, y : 300, ft : 0, f : 0, fr : .15, s : 0, ac : 0,  startx : 0, starty : 255, bark_ft : .2, bark_count : 0}//Used to track dog after each level
+            let dog_sniff_anim = false;
+            let round_sign_time = 0;//Track the time that the round sign has been up
+
+            const cursor_scale = 64;//The X,Y scale of the cursor
+
+            let mouseX = 0;//The mouse X position
+            let mouseY = 0;//The Mouse Y position
+            let clickX = 0;//Last click X position
+            let clickY = 0;//Last click Y position
+            let maxshots = 3;//The Max number of shots per round
+            let shots = 0;//the tracker for number of shots taken
+
+            canvas.addEventListener("mousemove", function (e) {//The Event Listener for moving the mouse
                 const rect = canvas.getBoundingClientRect();
                 mouseX = e.clientX - rect.left;
                 mouseY = e.clientY - rect.top;
             });
-            canvas.addEventListener("click", function (e) {
+            canvas.addEventListener("click", function (e) {//The Event Listener for clicking
                 const rect = canvas.getBoundingClientRect();
                 clickX = e.clientX - rect.left;
                 clickY = e.clientY - rect.top;
                 Click(clickX, clickY);
             });
 
-            if (mainmenu_spritesheet.complete) {
+            if (mainmenu_spritesheet.complete) {//Loads the main menu when the spritsheet for it has loaded, technically is what starts/loads the game.
                 update();
             } else {
                 mainmenu_spritesheet.onload = update;
             }
 
-            function UpdateDucks(){
+            function UpdateDucks(){//This runs everytick to update the ducks information, like speed, direction, etc.
                 for (let duck of ducks){
                     if(duck.s != 2){// check if not dead
                         if(round_ended == false){
@@ -377,7 +381,7 @@
                 }
             }
 
-            function MainMenu(){
+            function MainMenu(){//Display the Main Menu and play title song
                 if(played_intro_song == false){
                     played_intro_song = true;
                     PlaySound('title_song');
@@ -385,19 +389,19 @@
                 ctx.drawImage(mainmenu_spritesheet,0,0,256,224,0,0,canvas.width, canvas.height)
             }
 
-            function DrawCursor(){
+            function DrawCursor(){//Draws the cursor each frame
                 ctx.drawImage(cursor_spritesheet,0,0,32,32,mouseX-(cursor_scale/2),mouseY-(cursor_scale/2),cursor_scale,cursor_scale)
             }
 
-            function DrawBackground(){
+            function DrawBackground(){//Draws the main level background
                 ctx.drawImage(levelbackground_spritesheet,0,0,256,240,0,0,canvas.width, canvas.height)
             }
 
-            function DrawForeGround(){
+            function DrawForeGround(){//Draws the main level foreground
                 ctx.drawImage(levelforeground_spritesheet,0,0,256,240,0,0,canvas.width, canvas.height)
             }
             
-            function DrawDog(num_of_ducks, pause_time){
+            function DrawDog(num_of_ducks, pause_time){//Draws the dog at the end of each sub round. Takes the number of ducks to display the correct sprite
                 if(dog.d == 1){// dog up
                     dog.y -= dog.v*dt;
                     if(dog.y < dog.ymin){
@@ -449,7 +453,7 @@
                 }
             }
 
-            function DrawDogSniff(full_anim){
+            function DrawDogSniff(full_anim){//Draws the animation after a round. set to true to play the full opening animation.
                 if(full_anim == true){
 
                     if(dog_sniff.s == 0){  //Walk 1
@@ -635,7 +639,7 @@
                 }
             }
 
-            function DrawPoints(){
+            function DrawPoints(){//Draws the small points after a duck is shot
                 for (let point of draw_points){
                     point.ft += dt;
                     if(point.ft >= .3){
@@ -644,7 +648,7 @@
                 }
             }
 
-            function DrawScore(score, x, y){
+            function DrawScore(score, x, y){//Draws the score on the main menu and in the game
                 score_string = score.toString().padStart(6, "0").split("").map(Number);
 
                 for (let i=0; i < score_string.length; i++){
@@ -652,7 +656,7 @@
                 }
             }
 
-            function DrawRoundNum(round, x, y){
+            function DrawRoundNum(round, x, y){//Draws the Round Number
                 round_list = round.toString().split('').map(Number);
 
                 for(i = 0; i < round_list.length; i++){
@@ -660,13 +664,13 @@
                 }
             }
 
-            function DrawTallyMarks(ducks_to_shoot, x, y){
+            function DrawTallyMarks(ducks_to_shoot, x, y){//Draws the tally marks for the number of ducks to shoot
                 for (let i = 0; i < num_to_shoot; i++){
                     ctx.drawImage(tallymark_spritesheet,0,0,7,4,x+(20*i),y,17,12)
                 }
             }
 
-            function DrawDuckCounter(ducks_shot, x, y){
+            function DrawDuckCounter(ducks_shot, x, y){//Draws the Counter for the ducks shot
                 for (let duck in shot_duck_counter){
                     if (shot_duck_counter[duck] == 1){
                         ctx.drawImage(tallymark_spritesheet,7,0,7,7,x+(20*(duck-1)),y,17,16);
@@ -687,7 +691,7 @@
                 round_flash_ft += dt;
             }
 
-            function DrawDuckCounterCollapse(ducks_shot, x, y){
+            function DrawDuckCounterCollapse(ducks_shot, x, y){//Draws the collapsing score animation at the end of each round
                 
                 if(shot_duck_collapse_finished == false){
                     for (let duck in shot_duck_counter){
@@ -711,7 +715,7 @@
                 }
             }
 
-            function RoundClock(){
+            function RoundClock(){//Tracks the round clock and status.
                 if(round_clock_status == 'waiting'){
                     round_clock_status = 'running';
                 }
@@ -724,7 +728,7 @@
                 }
             }
             
-            function NumberToShoot(level_number){
+            function NumberToShoot(level_number){//Returns the number of ducks to shoot based on round number
                 if (level_number < 10) return 6;
                 if (level_number >= 10 && level_number < 13) return 7;
                 if (level_number >= 13 && level_number < 15) return 8;
@@ -732,7 +736,7 @@
                 if (level_number >= 20) return 10;
             }
 
-            function PlaySound(sound){
+            function PlaySound(sound){//Plays the specified sound
                 switch (sound) {
                     case 'clear_round':
                         clearround_audio.play();
@@ -790,7 +794,7 @@
                 }
             }
 
-            function ResetRound(){
+            function ResetRound(){//Resets the Variables at the end of each sub round
                 if(round_num < 10){
                     round_ended = false;
                     ducks = [];
@@ -809,7 +813,7 @@
                 }
             }
 
-            function ResetLevel(){
+            function ResetLevel(){//Resets the variables at the end of each level
                 round_num = 0;
                 end_of_level = false;
                 perfect_level = false;
@@ -821,7 +825,7 @@
                 shot_duck_animation_ft = 0;
             }
 
-            function Click(x,y){
+            function Click(x,y){//Handles the click events
                 if(clicks == 0){
                     PlaySound('title_song')
                     clicks += 1;
@@ -891,7 +895,7 @@
                 }
             }
             
-            function GenerateDucks(n){
+            function GenerateDucks(n){//Generates the random ducks each level given the number you want to generate
                 for (let i = 0; i < n; i++) {
                     let type = WeightedRandom([0, 1, 2],[0.7, 0.2, 0.9]);
 
@@ -914,7 +918,7 @@
                 }
             }//
 
-            function UpdateShots(x){
+            function UpdateShots(x){//Draws the number of shots left
                 if(x == 0){
                    ctx.drawImage(bullet_spritesheet,0,0,4,7,65,415,8,14)
                    ctx.drawImage(bullet_spritesheet,0,0,4,7,85,415,8,14) 
@@ -927,7 +931,7 @@
                 }
             }
 
-            function CheckIfWon(){
+            function CheckIfWon(){//Checks if the user has won the sub round
 
                 let aliveducks = 0;
                 let goneducks = 0;
@@ -983,7 +987,7 @@
                 }
             }
 
-            function EndRound(){
+            function EndRound(){//Runs once at the end of the Sub Round. plays the animations
                 setTimeout(() => {
                     gamestate = 2;
                     setTimeout(() => {
@@ -992,7 +996,7 @@
                 }, 2000);
             }
             
-            function EndLevel(){
+            function EndLevel(){//Runs once at the end of each level, plays the animations and prepares for next level
                 setTimeout(() => {//Wait for Ducks to fall
                     end_of_level = true;
                     gamestate = 3;
@@ -1072,7 +1076,7 @@
                 }, 1);
             }
 
-            function WeightedRandom(values,weights){
+            function WeightedRandom(values,weights){//Returns a weighted Random given the values and weights
                 let r = Math.random();
                 let sum = 0;
 
@@ -1082,7 +1086,7 @@
                 }
             }
 
-            function update(currentTime){
+            function update(currentTime){//Main Game loop, draws specific elements given the gamestate.
 
                 dt = (currentTime - lasttime) / 1000; 
                 lasttime = currentTime;
