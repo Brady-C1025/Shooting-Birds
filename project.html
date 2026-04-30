@@ -4,8 +4,30 @@
         <title>Shooting Birds</title>
         <meta charset="utf-8"> 
         <style>
+            @font-face {
+                font-family: Pixel;
+                src: url(fonts/PixelifySans-VariableFont_wght.ttf);
+            }
+            .InstructionsBox{
+                margin: 20px auto;
+                padding: 10px;
+                display: block;
+                width: 620px;
+                border: 2px solid white;
+                border-radius: 10px;
+                background-color: black;
+            }
+            .InstructionsText{
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-family: Pixel;
+                text-align: center;
+            }
             .gamecanvas{
-                 border:1px solid white;
+                 border:2px solid white;
+                 border-radius: 10px;
                  padding: 0; 
                  margin: auto; 
                  display: block;
@@ -29,11 +51,16 @@
 
         <canvas class="gamecanvas" id="GameCanvas" width="640" height="480"></canvas>
 
-        <p class="centeredtext" >Controls : Left Mouse Click for everything.</p>
-        <p class="centeredtext" >Choose a difficulty, either 1 duck or 2 ducks at a time.</p>
-        <p class="centeredtext" >Click on a duck to shoot it down, you only get 3 shots per duck.</p>
-        <p class="centeredtext" >To beat the round and continue you must get enough ducks to fill the blue bar at the bottom.</p>
-        <p class="centeredtext" >Game might break if you switch tabs.</p>
+
+        <span id="InstructionsBox" class="InstructionsBox">
+            <p class="InstructionsText" >Controls : Left Mouse Click for everything.</p>
+            <p class="InstructionsText" >Choose a difficulty, either 1 duck or 2 ducks at a time.</p>
+            <p class="InstructionsText" >Click on a duck to shoot it down, you only get 3 shots per duck.</p>
+            <p class="InstructionsText" >To beat the round and continue you must get enough ducks to fill the blue bar at the bottom.</p>
+            <p class="InstructionsText" >Game might break if you switch tabs.</p>
+        </span>
+
+
 
         
         <img id="duck0_spritesheet" src="img/blackduck.png" style="display: none;">
